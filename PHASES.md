@@ -1,6 +1,17 @@
 # PHASES.md: Donna build plan
 
+
+
+
+
+
+
 Build in order. Do not start a phase until the previous phase's test passes and is committed.
+
+
+
+
+
 
 Build order is BACKEND FIRST. Phases B0 to B6 are backend only and are tested with curl, scripts, or the Node test runner. The frontend (B7) starts only after B1 to B6 pass.
 
