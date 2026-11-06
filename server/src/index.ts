@@ -1,6 +1,7 @@
 import { createApp } from "./app.js";
 import { ConfigError, loadConfig, loadLocalEnvFile, missingCredentials } from "./config.js";
-import { AppError } from "./errors.js";
+import { AppError, redactProcessSecrets } from "./errors.js";
+import { createHederaBuyer, createMerchantPaywall } from "./integrations/hedera.js";
 import { createArkivService, describeArkivError, type ArkivService } from "./integrations/arkiv.js";
 import { createLlmService, describeLlmError, type LlmService } from "./integrations/llm.js";
 import { MemoryStore } from "./store/memoryStore.js";
@@ -48,7 +49,23 @@ async function start(): Promise<void> {
     }
   }
 
-  const app = createApp({ config, store: new MemoryStore(), arkiv, llm });
+  // Hedera x402: the merchant paywall and the agent's buyer. The paywall reads the facilitator's
+  // /supported list at start. The buyer and /api/payments share one store, so receipts show up there.
+  const store = new MemoryStore();
+  let paywall = null;
+  let buyer = null;
+  if (config.HEDERA_MERCHANT_ACCOUNT_ID && config.HEDERA_AGENT_ACCOUNT_ID && config.HEDERA_AGENT_PRIVATE_KEY) {
+    try {
+      paywall = createMerchantPaywall(config);
+      buyer = createHederaBuyer(config, store);
+    } catch (err) {
+      const detail = err instanceof AppError ? err.message : err instanceof Error ? err.name : "unknown error";
+      console.error(redactProcessSecrets(`Hedera setup failed: ${detail}`));
+      process.exit(1);
+    }
+  }
+
+  const app = createApp({ config, store, arkiv, llm, paywall, buyer });
   // Express 5 calls this callback with an error when listening fails (for example, port in use).
   app.listen(config.PORT, (err?: Error) => {
     if (err) {

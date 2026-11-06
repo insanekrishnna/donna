@@ -1,5 +1,6 @@
 import type { AddressInfo } from "node:net";
-import { createApp } from "../src/app.js";
+import { type AppDeps, createApp } from "../src/app.js";
+import type { Store } from "../src/store/store.js";
 import { loadConfig } from "../src/config.js";
 import type { ArkivService } from "../src/integrations/arkiv.js";
 import type { LlmService } from "../src/integrations/llm.js";
@@ -40,8 +41,10 @@ export async function startTestServer(
   env: Record<string, string>,
   arkiv: ArkivService | null = null,
   llm: LlmService | null = null,
+  extra: Pick<AppDeps, "paywall" | "buyer"> & { store?: Store } = {},
 ) {
-  const app = createApp({ config: loadConfig(env), store: new MemoryStore(), arkiv, llm });
+  const { store = new MemoryStore(), ...hedera } = extra;
+  const app = createApp({ config: loadConfig(env), store, arkiv, llm, ...hedera });
   const server = await new Promise<import("node:http").Server>((resolve, reject) => {
     const s = app.listen(0, (err?: Error) => (err ? reject(err) : resolve(s)));
   });
