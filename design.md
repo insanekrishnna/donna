@@ -1,11 +1,29 @@
 # design.md: Donna
 
+
+
+
+
+
+
+
 This file defines how Donna looks and feels. Follow it for every screen. Do not invent new colors, fonts, or spacing values outside this file.
 
 ## Design direction
 Donna should feel calm, clear, and trustworthy. Users are handing money and tasks to AI agents, so the interface should look organized and honest, not flashy.
 
+
+
+
+
+
+
 Keywords: clean, editorial, legible, precise, quietly confident.
+
+
+
+
+
 
 Avoid:
 - Purple-to-blue gradients and neon crypto aesthetics.
@@ -13,6 +31,11 @@ Avoid:
 - Stock "AI sparkle" icons everywhere.
 - Walls of animation. Motion is for feedback only.
 - Corporate jargon in UI copy.
+
+
+
+
+
 
 ## Colors (Tailwind tokens)
 Define these in tailwind.config as the `donna` palette.
