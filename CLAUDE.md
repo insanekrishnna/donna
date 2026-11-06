@@ -1,9 +1,25 @@
 # CLAUDE.md: Donna
 
+
+
+
+
+
+
 Read this file completely before writing any code. These rules override your defaults.
+
+
+
+
+
 
 ## What we are building
 Donna is a marketplace where a user describes a complex task, and a Coordinator hires a team of specialist AI agents to finish it. Agents are listed publicly, discovered through Arkiv, paid through Hedera x402, and run their AI work on 0G Private Computer.
+
+
+
+
+
 
 Donna is inspired by HashMind's user journey (chat-based agent creation, marketplace cards, add agents to a chat). We do NOT copy HashMind's code, designs, copy, or assets. We build everything from scratch.
 
