@@ -18,8 +18,11 @@ import { AppError, redactSecretValues } from "../errors.js";
 export const LLM_TIMEOUT_MS = 60_000;
 /** One retry, done by the SDK on connection errors, timeouts, 408, 409, 429 and 5xx. */
 export const LLM_MAX_RETRIES = 1;
-/** Upper bound on generated tokens per call, so one call cannot run up a large bill. */
-export const LLM_MAX_TOKENS = 1500;
+/**
+ * Upper bound on generated tokens per call, so one call cannot run up a large bill. Reasoning
+ * models count their hidden reasoning against this limit too, so it leaves room for both.
+ */
+export const LLM_MAX_TOKENS = 6000;
 
 export interface CompletionInput {
   system: string;
@@ -142,8 +145,16 @@ export function createLlmService(config: Config, options: LlmServiceOptions = {}
       if (!parsed.success) throw describeLlmError(parsed.error, secrets);
 
       // The schema requires at least one choice.
-      const text = parsed.data.choices[0]?.message.content?.trim() ?? "";
+      const choice = parsed.data.choices[0];
+      const text = choice?.message.content?.trim() ?? "";
       if (!text) {
+        if (choice?.finish_reason === "length") {
+          throw new AppError(
+            502,
+            "LLM_LENGTH_LIMIT",
+            "The AI model used its whole length limit before answering. Try again, or use a model that reasons less.",
+          );
+        }
         throw new AppError(502, "LLM_EMPTY_RESPONSE", "The AI provider returned an empty answer.");
       }
       return { text, requestId: parsed.data.id ?? null, model: parsed.data.model ?? null };

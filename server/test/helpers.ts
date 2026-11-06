@@ -41,7 +41,7 @@ export async function startTestServer(
   env: Record<string, string>,
   arkiv: ArkivService | null = null,
   llm: LlmService | null = null,
-  extra: Pick<AppDeps, "paywall" | "buyer"> & { store?: Store } = {},
+  extra: Pick<AppDeps, "paywall" | "buyer" | "coordinator"> & { store?: Store } = {},
 ) {
   const { store = new MemoryStore(), ...hedera } = extra;
   const app = createApp({ config: loadConfig(env), store, arkiv, llm, ...hedera });

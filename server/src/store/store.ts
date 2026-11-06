@@ -54,7 +54,58 @@ export interface BudgetLedger {
   remainingTinybars: bigint;
 }
 
+export type TaskRunStatus = "planning" | "running" | "completed" | "failed";
+
+export interface TaskStep {
+  id: string;
+  agentId: string;
+  instruction: string;
+  dependsOn: string[];
+  needsPaidData: boolean;
+  status: ExecutionStatus;
+  /** Private output. Kept on the server only, never written to Arkiv. */
+  output?: string;
+  llmRequestId?: string;
+  error?: string;
+}
+
+/** Public Arkiv references for a task. Every key and hash comes from a real write. */
+export interface TaskArkivRefs {
+  taskEntityKey?: string;
+  taskTxHash?: string;
+  statusTxHashes: { status: string; txHash: string }[];
+  assignments: { agentId: string; stepId: string; status: string; entityKey: string; txHash: string }[];
+}
+
+/**
+ * One task run, server side (in memory for the MVP). The task text, outputs and report are
+ * private: they live here and are never written to Arkiv.
+ */
+export interface TaskRun {
+  id: string;
+  task: string;
+  agentIds: string[];
+  requesterAddress?: string;
+  status: TaskRunStatus;
+  /** Plain-language reason, set when status is "failed". */
+  error?: string;
+  budgetCapTinybars: bigint;
+  /** Server-computed from config prices, set after planning. */
+  estimatedCostTinybars?: bigint;
+  planRequestId?: string;
+  steps: TaskStep[];
+  report?: string;
+  arkiv: TaskArkivRefs;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface Store {
+  // Task runs
+  /** Save a task run (insert or replace). The stored copy is independent of the caller's object. */
+  saveTask(task: TaskRun): Promise<void>;
+  getTask(id: string): Promise<TaskRun | undefined>;
+
   // Execution records
   addExecution(record: NewExecutionRecord): Promise<ExecutionRecord>;
   updateExecution(id: string, update: ExecutionUpdate): Promise<ExecutionRecord>;

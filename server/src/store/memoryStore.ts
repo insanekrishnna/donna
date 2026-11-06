@@ -7,6 +7,7 @@ import type {
   NewPaymentReceipt,
   PaymentReceipt,
   Store,
+  TaskRun,
 } from "./store.js";
 
 interface LedgerState {
@@ -25,6 +26,16 @@ export class MemoryStore implements Store {
   private readonly executions = new Map<string, ExecutionRecord>();
   private readonly receipts: PaymentReceipt[] = [];
   private readonly ledgers = new Map<string, LedgerState>();
+  private readonly tasks = new Map<string, TaskRun>();
+
+  async saveTask(task: TaskRun): Promise<void> {
+    this.tasks.set(task.id, structuredClone(task));
+  }
+
+  async getTask(id: string): Promise<TaskRun | undefined> {
+    const task = this.tasks.get(id);
+    return task ? structuredClone(task) : undefined;
+  }
 
   async addExecution(record: NewExecutionRecord): Promise<ExecutionRecord> {
     const stored: ExecutionRecord = { ...record, id: randomUUID() };

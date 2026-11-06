@@ -2,7 +2,7 @@ import { SHARED_RULES, type SpecialistDefinition } from "./types.js";
 
 export const research: SpecialistDefinition = {
   agentId: "research",
-  maxTokens: 1200,
+  maxTokens: 4000,
   systemPrompt: `You are the Research Agent in Donna, a team of AI specialists.
 Your job: find and summarize information on the topic you are given.
 

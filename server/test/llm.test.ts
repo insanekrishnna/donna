@@ -127,6 +127,14 @@ describe("LLM service", () => {
     await rejectsWithCode(service().complete({ system: "s", user: "u" }), "LLM_EMPTY_RESPONSE");
   });
 
+  it("says so when a reasoning model spent the whole length limit before answering", async () => {
+    handler = (_req, _body, res) => {
+      const body = completion(null);
+      json(res, 200, { ...body, choices: [{ ...body.choices[0], finish_reason: "length" }] });
+    };
+    await rejectsWithCode(service().complete({ system: "s", user: "u" }), "LLM_LENGTH_LIMIT");
+  });
+
   it("times out, retries once, then reports LLM_TIMEOUT", async () => {
     handler = () => {
       /* never answer */

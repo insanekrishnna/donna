@@ -8,6 +8,8 @@ import type { LlmService } from "./integrations/llm.js";
 import { agentsRouter } from "./routes/agents.js";
 import { devRouter } from "./routes/dev.js";
 import { paymentsRouter, servicesRouter } from "./routes/payments.js";
+import { tasksRouter } from "./routes/tasks.js";
+import type { Coordinator } from "./agents/coordinator.js";
 import type { Store } from "./store/store.js";
 
 export interface AppDeps {
@@ -21,10 +23,20 @@ export interface AppDeps {
   paywall?: RequestHandler | null;
   /** Agent-side x402 buyer. Null (or absent) when Hedera is not configured. */
   buyer?: HederaBuyer | null;
+  /** Null (or absent) unless the LLM, Hedera and Arkiv (with the server key) are all configured. */
+  coordinator?: Coordinator | null;
 }
 
 /** Build the Express app without listening, so tests can start it on a random port. */
-export function createApp({ config, store, arkiv, llm = null, paywall = null, buyer = null }: AppDeps): Express {
+export function createApp({
+  config,
+  store,
+  arkiv,
+  llm = null,
+  paywall = null,
+  buyer = null,
+  coordinator = null,
+}: AppDeps): Express {
   const app = express();
 
   app.disable("x-powered-by");
@@ -40,6 +52,7 @@ export function createApp({ config, store, arkiv, llm = null, paywall = null, bu
 
   app.use(servicesRouter(paywall));
   app.use("/api/payments", paymentsRouter(store));
+  app.use("/api/tasks", tasksRouter(coordinator, store));
 
   // Dev-only routes are not mounted in production, so they return the normal 404.
   if (config.NODE_ENV !== "production") app.use("/api/dev", devRouter(llm, buyer));

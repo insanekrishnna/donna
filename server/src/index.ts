@@ -1,3 +1,4 @@
+import { createCoordinator } from "./agents/coordinator.js";
 import { createApp } from "./app.js";
 import { ConfigError, loadConfig, loadLocalEnvFile, missingCredentials } from "./config.js";
 import { AppError, redactProcessSecrets } from "./errors.js";
@@ -65,7 +66,11 @@ async function start(): Promise<void> {
     }
   }
 
-  const app = createApp({ config, store, arkiv, llm, paywall, buyer });
+  // The Coordinator needs all three partners, and Arkiv with the server key (it writes task records).
+  const coordinator =
+    llm && buyer && arkiv?.serverAddress ? createCoordinator({ store, llm, arkiv, buyer }) : null;
+
+  const app = createApp({ config, store, arkiv, llm, paywall, buyer, coordinator });
   // Express 5 calls this callback with an error when listening fails (for example, port in use).
   app.listen(config.PORT, (err?: Error) => {
     if (err) {
