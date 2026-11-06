@@ -218,13 +218,33 @@ Verified on 2026-11-06 against the official docs, the installed type definitions
 - Docs: https://docs.arkiv.network/ and https://github.com/Arkiv-Network/arkiv-sdk-js
 - Package: `@arkiv-network/sdk` (verified 1.0.1) with `viem`. Requires Node 22.10 or newer.
 - Chain: Arkiv testnet "Rabdi", chain ID 7794095 (confirmed live with `eth_chainId`). Built with `rabdi({ accessKey: ARKIV_ACCESS_KEY })` from `@arkiv-network/sdk/chains`, which gives the RPC `https://rpc.rabdi.db-chain.testnet.arkiv.network/<accessKey>`. At startup the server checks that the chain ID equals ARKIV_CHAIN_ID.
-- Access key: free from https://hub.arkiv.network/access-keys. It is not a secret, but restrict it to our origins in the Hub. An empty key uses the heavily rate-limited public endpoint.
+- Access keys: free from https://hub.arkiv.network/access-keys. An empty key uses the heavily rate-limited public endpoint. We use two keys:
+  - `VITE_ARKIV_ACCESS_KEY`, for the browser: restricted to our origins in the Hub (localhost:5173 now, the Vercel URL in B8).
+  - `ARKIV_ACCESS_KEY`, for the server: no origin restriction, because server requests carry no `Origin` header. An origin-restricted key returns `403 ORIGIN_FORBIDDEN` from the server (seen on 2026-11-07). Because it is unrestricted, the server key is treated as a secret: never logged, and redacted from every Arkiv error message (the RPC URL contains it).
 - Gas: tGLM from https://hub.arkiv.network/faucet. Explorer: https://rabdi.explorer.arkiv.network
 - Clients: the wallet client (`createWalletClient`) only writes: `createEntity`, `patchEntity`, `extendEntity`, `deleteEntity`, `executeBatch`. The public client (`createPublicClient`) only reads: `getEntity`, `select`, `query`. We build both.
 - Data model: `defineSchema` schemas as described in section 4.1.
 - Writes: listings come from the user's wallet in the browser, so owner = creator. Task and assignment records are written by the server with ARKIV_SERVER_PRIVATE_KEY (`privateKeyToAccount`). Document both owners in arkiv/schema.md. The seed script writes the three platform-owned specialist listings with the server key.
-- Reads: `select(...).from(AgentListing).limit(100).fetch()`, at most 100 per page, and `getEntity(key, AgentListing)`, which throws `NoEntityFoundError` when an entity is missing or expired. Every entity is validated with Zod; invalid ones are skipped. The UI shows `$key` and `$owner` on each card.
+- Reads:
+  - `listAgents` filters on the schema tag directly (`eq(SCHEMA_ATTRIBUTE, AgentListing.tag)`, the same filter the SDK's `from()` uses) without reading through the schema. So the SDK skips nothing, and every page has a last `$key`.
+  - It pages by key (`gt("$key", key(lastKey))` with `asc("$key")`) rather than by offset, because offsets shift when entities expire mid-scan. Pages hold 25 rows, and only `agentId`, `category` and `data` are selected by name, so oversized junk entities cannot push a page past the RPC response limit.
+  - It stops only on an empty page, because a short page is not proof of the end. One scan reads at most 1,000 entities; reaching that limit sets `truncated`.
+  - Every row is validated with Zod. Invalid ones are skipped and counted in `skippedCount`, and duplicates are dropped.
+  - Single reads use `getEntity(key, AgentListing)`, which throws `NoEntityFoundError` when an entity is missing or expired.
+  - The UI shows `$key` and `$owner` on each card.
 - Expiration: set on every entity with `ExpirationTime`. Explain in arkiv/how-you-use-arkiv.md why expiration matters.
+
+**Verified in B2** (`@arkiv-network/sdk` 1.0.1, `viem` 2.57.16, Rabdi testnet, 2026-11-07). Each item was a VERIFY note before B2:
+| Item | Result | Proof |
+|---|---|---|
+| Chain ID and RPC | 7794095 via `rabdi({ accessKey })` | `test/live/arkiv.live.test.ts` "RPC reports the configured chain"; startup check in `src/index.ts` |
+| Attribute and expiration API (4.1) | `defineSchema` columns plus `{ expiration: ExpirationTime.* }`; `str` capped at 128 bytes | `test/arkiv.test.ts` "Arkiv str columns are capped at 128 bytes"; every live write |
+| Owner semantics (6.1) | `$owner` and `$creator` equal the address that sent the write | `test/live/arkiv.live.test.ts` "$owner equals the writing address on a real entity"; `npm run smoke:arkiv` |
+| Invalid entities on read | tag-filtered query, paged by `$key`; every row is validated with Zod; invalid ones are counted in `skippedCount` | `test/live/arkiv.live.test.ts` "listAgents skips a real malformed entity" (also re-reads with 2 rows per page and gets the same result) |
+| Owner check in verify | `$owner` compared case-insensitively; a different address returns 403 `OWNER_MISMATCH` | `test/live/arkiv.live.test.ts` "POST /api/agents/verify against the real entity" |
+| Status updates | `patchEntity(TaskRecord, key, { set: { status } })` | `test/live/arkiv.live.test.ts` "writes a task record, updates its status" |
+
+Browser-wallet signing (the wallet client from Wagmi) is tested in B7.
 
 ## 8. Security model
 - Secrets: server env only. .env in .gitignore.
@@ -257,13 +277,13 @@ HEDERA_AGENT_PRIVATE_KEY=       # ECDSA, hex
 MAX_PAYMENT_PER_CALL=0.10       # decimal HBAR, converted to tinybars in config
 
 # Arkiv (Rabdi testnet)
-ARKIV_ACCESS_KEY=               # from https://hub.arkiv.network/access-keys
+ARKIV_ACCESS_KEY=               # server key, no origin restriction; treated as a secret
 ARKIV_CHAIN_ID=7794095          # startup check against the chain
 ARKIV_SERVER_PRIVATE_KEY=       # funded with tGLM
 
 # Client (Vite, public values only)
 VITE_API_URL=http://localhost:4000
-VITE_ARKIV_ACCESS_KEY=          # public by design; restrict to our origins in the Hub
+VITE_ARKIV_ACCESS_KEY=          # browser key, a different key restricted to our origins in the Hub
 VITE_ARKIV_CHAIN_ID=7794095
 ```
 
@@ -304,12 +324,15 @@ donna/
 │   ├── src/
 │   │   ├── agents/       coordinator.ts, research.ts, analyst.ts, writer.ts, registry.ts
 │   │   ├── integrations/ og.ts, hedera.ts, arkiv.ts
-│   │   ├── routes/       agents.ts, tasks.ts, payments.ts, services.ts, dev.ts
+│   │   ├── routes/       agents.ts, tasks.ts, payments.ts, services.ts, dev.ts, validate.ts (body validation helper)
 │   │   ├── schemas/      agent.ts, task.ts, plan.ts, arkiv.ts (defineSchema definitions)
 │   │   ├── store/        store.ts (interface), memoryStore.ts
+│   │   ├── app.ts        builds the Express app without listening (used by tests)
+│   │   ├── errors.ts     AppError, error shape, central error handler
 │   │   ├── config.ts
 │   │   └── index.ts
-│   └── scripts/          arkiv-smoke.ts, seed.ts
+│   ├── scripts/          arkiv-smoke.ts, seed.ts, bootstrap.ts (shared script setup)
+│   └── test/             unit tests (npm test); live/ holds live partner tests (npm run test:live)
 ├── arkiv/
 │   ├── schema.md
 │   ├── friction.md

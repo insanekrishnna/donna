@@ -1,6 +1,7 @@
 import type { AddressInfo } from "node:net";
 import { createApp } from "../src/app.js";
 import { loadConfig } from "../src/config.js";
+import type { ArkivService } from "../src/integrations/arkiv.js";
 import { MemoryStore } from "../src/store/memoryStore.js";
 
 /**
@@ -34,8 +35,8 @@ export const FAKE_CREDENTIALS = {
 } as const;
 
 /** Start the app on a random free port. Call `close()` when done. */
-export async function startTestServer(env: Record<string, string>) {
-  const app = createApp({ config: loadConfig(env), store: new MemoryStore() });
+export async function startTestServer(env: Record<string, string>, arkiv: ArkivService | null = null) {
+  const app = createApp({ config: loadConfig(env), store: new MemoryStore(), arkiv });
   const server = await new Promise<import("node:http").Server>((resolve, reject) => {
     const s = app.listen(0, (err?: Error) => (err ? reject(err) : resolve(s)));
   });

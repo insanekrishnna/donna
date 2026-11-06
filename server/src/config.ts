@@ -1,3 +1,5 @@
+import { fileURLToPath } from "node:url";
+import dotenv from "dotenv";
 import { z } from "zod";
 
 /**
@@ -12,6 +14,36 @@ import { z } from "zod";
  */
 
 export const TINYBARS_PER_HBAR = 100_000_000n;
+
+/**
+ * Load the repo-root .env (one file for the whole project) into process.env.
+ * Existing variables win. A missing file is fine: hosted deployments set variables in the dashboard.
+ * Never logs anything.
+ */
+export function loadLocalEnvFile(): void {
+  dotenv.config({ path: fileURLToPath(new URL("../../.env", import.meta.url)), quiet: true });
+}
+
+/**
+ * Testnet prices, in tinybars (1 HBAR = 100,000,000 tinybars). Placeholders, set here in config,
+ * not sourced figures (ARCHITECTURE.md section 3). Never use floats for money.
+ */
+export const AGENT_PRICES_TINYBARS = {
+  research: 5_000_000n, // 0.05 HBAR
+  analyst: 3_000_000n, // 0.03 HBAR
+  writer: 2_000_000n, // 0.02 HBAR
+} as const;
+
+/** Price of GET /api/services/market-snapshot: 0.01 HBAR. Testnet placeholder. */
+export const MARKET_SNAPSHOT_PRICE_TINYBARS = 1_000_000n;
+
+/** Format tinybars as a decimal HBAR string with no trailing zeros, for example 5000000n -> "0.05". */
+export function tinybarsToHbar(tinybars: bigint): string {
+  if (tinybars < 0n) throw new Error("Tinybar amount cannot be negative");
+  const whole = tinybars / TINYBARS_PER_HBAR;
+  const fraction = (tinybars % TINYBARS_PER_HBAR).toString().padStart(8, "0").replace(/0+$/, "");
+  return fraction ? `${whole}.${fraction}` : whole.toString();
+}
 
 const HBAR_DECIMAL = /^\d+(\.\d{1,8})?$/;
 
@@ -56,9 +88,9 @@ const envSchema = z.object({
     "CLIENT_ORIGIN must be an origin with no path or trailing slash, like http://localhost:5173",
   ),
 
-  // 0G (testnet)
+  // AI inference: OpenAI-compatible endpoint. Still named OG_*; the approved OpenRouter switch renames these to LLM_*.
   OG_BASE_URL: httpUrl("OG_BASE_URL"),
-  OG_API_KEY: optional(z.string().regex(/^sk-\S+$/, "OG_API_KEY must start with sk-")),
+  OG_API_KEY: optional(z.string().regex(/^sk-\S{13,}$/, "OG_API_KEY must start with sk- and be at least 16 characters")),
   OG_MODEL: optional(z.string().regex(/^\S+$/, "OG_MODEL must not contain spaces")),
 
   // Hedera testnet
@@ -69,13 +101,17 @@ const envSchema = z.object({
   HEDERA_AGENT_ACCOUNT_ID: optional(hederaAccountId("HEDERA_AGENT_ACCOUNT_ID")),
   HEDERA_AGENT_PRIVATE_KEY: optional(hederaPrivateKey("HEDERA_AGENT_PRIVATE_KEY")),
   MAX_PAYMENT_PER_CALL: required("MAX_PAYMENT_PER_CALL")
-    .regex(HBAR_DECIMAL, "MAX_PAYMENT_PER_CALL must be a decimal HBAR amount with at most 8 decimals, like 0.10")
-    // Zod 4 runs refinements even after a failed regex, so skip malformed values here (the regex already reported them).
-    .refine((v) => !HBAR_DECIMAL.test(v) || hbarToTinybars(v) > 0n, "MAX_PAYMENT_PER_CALL must be greater than 0"),
+    // abort: Zod 4 otherwise still runs the refine below on a malformed value, and hbarToTinybars would throw.
+    .regex(HBAR_DECIMAL, {
+      error: "MAX_PAYMENT_PER_CALL must be a decimal HBAR amount with at most 8 decimals, like 0.10",
+      abort: true,
+    })
+    .refine((v) => hbarToTinybars(v) > 0n, "MAX_PAYMENT_PER_CALL must be greater than 0"),
 
   // Arkiv (Rabdi testnet)
   ARKIV_CHAIN_ID: z.literal("7794095", "ARKIV_CHAIN_ID must be 7794095 (Arkiv Rabdi testnet)").transform(Number),
-  ARKIV_ACCESS_KEY: optional(z.string().regex(/^\S+$/, "ARKIV_ACCESS_KEY must not contain spaces")),
+  // At least 16 characters, so log redaction (which ignores very short strings) always applies.
+  ARKIV_ACCESS_KEY: optional(z.string().regex(/^\S{16,}$/, "ARKIV_ACCESS_KEY must be at least 16 characters with no spaces")),
   ARKIV_SERVER_PRIVATE_KEY: optional(
     z.string().regex(/^0x[0-9a-fA-F]{64}$/, "ARKIV_SERVER_PRIVATE_KEY must be 0x followed by 64 hex characters"),
   ),

@@ -1,17 +1,13 @@
-import { fileURLToPath } from "node:url";
-import dotenv from "dotenv";
 import { createApp } from "./app.js";
-import { ConfigError, loadConfig, missingCredentials } from "./config.js";
+import { ConfigError, loadConfig, loadLocalEnvFile, missingCredentials } from "./config.js";
+import { AppError } from "./errors.js";
+import { createArkivService, describeArkivError, type ArkivService } from "./integrations/arkiv.js";
 import { MemoryStore } from "./store/memoryStore.js";
 
-// Local development reads the repo-root .env (one file for the whole project).
 // Tests set NODE_ENV=test and pass their own environment, so no local .env can leak into them.
-// Hosted deployments set variables in the dashboard; a missing file is fine.
-if (process.env.NODE_ENV !== "test") {
-  dotenv.config({ path: fileURLToPath(new URL("../../.env", import.meta.url)), quiet: true });
-}
+if (process.env.NODE_ENV !== "test") loadLocalEnvFile();
 
-function start(): void {
+async function start(): Promise<void> {
   let config;
   try {
     config = loadConfig();
@@ -24,7 +20,21 @@ function start(): void {
     throw err;
   }
 
-  const app = createApp({ config, store: new MemoryStore() });
+  // Arkiv reads need the access key. When it is set, confirm we are on the expected chain before serving.
+  let arkiv: ArkivService | null = null;
+  if (config.ARKIV_ACCESS_KEY) {
+    try {
+      arkiv = createArkivService(config);
+      await arkiv.checkChain();
+    } catch (err) {
+      // AppError messages are written to be safe. Anything else is reduced to a redacted name and message.
+      const detail = err instanceof AppError ? err.message : describeArkivError(err, config);
+      console.error(`Arkiv startup check failed: ${detail}`);
+      process.exit(1);
+    }
+  }
+
+  const app = createApp({ config, store: new MemoryStore(), arkiv });
   // Express 5 calls this callback with an error when listening fails (for example, port in use).
   app.listen(config.PORT, (err?: Error) => {
     if (err) {
@@ -37,4 +47,4 @@ function start(): void {
   });
 }
 
-start();
+void start();

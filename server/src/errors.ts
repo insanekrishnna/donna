@@ -1,4 +1,17 @@
 import type { ErrorRequestHandler, RequestHandler } from "express";
+import { ZodError } from "zod";
+
+/**
+ * Plain-language summary of validation problems: "name: must be at least 3 characters; skills: ...".
+ * Uses only each issue's path and message, never `issue.input`, so submitted values are not echoed.
+ */
+export function formatZodIssues(error: ZodError): string {
+  const parts = error.issues.map((issue) => {
+    const path = issue.path.map(String).join(".");
+    return path ? `${path}: ${issue.message}` : issue.message;
+  });
+  return [...new Set(parts)].join("; ");
+}
 
 /** Every API error has this shape (ARCHITECTURE.md section 5). */
 export interface ApiErrorBody {
@@ -33,13 +46,45 @@ interface HttpLikeError {
   type?: string;
 }
 
+/** Env variables whose values are secrets and must never appear in logs or responses. */
+export const SECRET_ENV_NAMES = [
+  "OG_API_KEY",
+  "HEDERA_MERCHANT_PRIVATE_KEY",
+  "HEDERA_AGENT_PRIVATE_KEY",
+  "ARKIV_ACCESS_KEY",
+  "ARKIV_SERVER_PRIVATE_KEY",
+] as const;
+
 /**
- * Log only the error's name and message, in every environment. Full error objects from
+ * Replace each secret value in a message with "[redacted]", in its raw, URL-encoded and
+ * un-prefixed (no 0x) forms. Partner errors often embed the request URL, which can hold a key.
+ */
+export function redactSecretValues(message: string, secrets: readonly (string | undefined)[]): string {
+  let out = message;
+  for (const secret of secrets) {
+    if (!secret) continue;
+    for (const form of new Set([secret, encodeURIComponent(secret), secret.replace(/^0x/, "")])) {
+      if (form.length >= 8) out = out.split(form).join("[redacted]");
+    }
+  }
+  return out;
+}
+
+/** Redact every secret currently set in process.env. */
+export function redactProcessSecrets(message: string): string {
+  return redactSecretValues(
+    message,
+    SECRET_ENV_NAMES.map((name) => process.env[name]),
+  );
+}
+
+/**
+ * Log only the error's name and message, redacted, in every environment. Full error objects from
  * partner SDKs or fetch can carry request headers (API keys) and must never reach the logs.
  */
 function logUnexpected(err: unknown): void {
   if (err instanceof Error) {
-    console.error(`Unhandled error: ${err.name}: ${err.message}`);
+    console.error(redactProcessSecrets(`Unhandled error: ${err.name}: ${err.message}`));
   } else {
     console.error("Unhandled error: non-Error value thrown");
   }
@@ -54,6 +99,12 @@ export function createErrorHandler(): ErrorRequestHandler {
 
     if (err instanceof AppError) {
       res.status(err.status).json({ error: err.message, code: err.code } satisfies ApiErrorBody);
+      return;
+    }
+
+    // Validation that ran below the route layer (for example, inside an integration) is still bad input.
+    if (err instanceof ZodError) {
+      res.status(400).json({ error: formatZodIssues(err), code: "INVALID_INPUT" } satisfies ApiErrorBody);
       return;
     }
 
