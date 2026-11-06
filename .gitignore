@@ -1,0 +1,31 @@
+# Secrets: never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.keystore
+secrets/
+secrets.*
+*.seed
+seed-phrase*
+
+# Dependencies and build output
+node_modules/
+dist/
+build/
+.vite/
+.vercel/
+.next/
+coverage/
+
+# Logs and OS files
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# Local tool settings
+.claude/settings.local.json
+.idea/
+.vscode/
