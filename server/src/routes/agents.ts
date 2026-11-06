@@ -17,8 +17,11 @@ export function agentsRouter(arkiv: ArkivService | null): Router {
   }
 
   router.get("/", async (_req, res) => {
-    const { agents, skippedCount, truncated } = await requireArkiv().listAgents();
-    res.json({ agents, skippedCount, truncated });
+    const service = requireArkiv();
+    const { agents, skippedCount, truncated } = await service.listAgents();
+    // The server key's public address owns the built-in specialists, so the UI can tell them
+    // apart from listings people publish. Public value only.
+    res.json({ agents, skippedCount, truncated, platformAddress: service.serverAddress ?? null });
   });
 
   // Validates and normalizes listing fields. It never writes and never builds a transaction:

@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { background: #F7F5F0; }
+  body { @apply bg-donna-bg text-donna-ink font-sans text-base antialiased; }
+  :focus-visible { outline: 2px solid #1F6F5C; outline-offset: 2px; }
+}
+
+@layer components {
+  .card { @apply rounded-xl border border-donna-line bg-donna-surface p-6 shadow-sm; }
+  .btn { @apply inline-flex h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors duration-150 ease-out disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-primary { @apply btn bg-donna-accent text-white hover:opacity-90; }
+  .btn-secondary { @apply btn border border-donna-line bg-donna-surface text-donna-ink hover:bg-donna-bg; }
+  .input { @apply w-full rounded-lg border border-donna-line bg-donna-surface px-3 py-2 text-base text-donna-ink placeholder:text-donna-muted; }
+  .label { @apply mb-2 block text-sm font-medium; }
+  .chip { @apply inline-flex items-center rounded-full bg-donna-accent-soft px-2 py-0.5 text-xs font-medium text-donna-accent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
