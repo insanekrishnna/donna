@@ -1,5 +1,9 @@
 # ARCHITECTURE.md: Donna
 
+
+
+
+
 This is the technical blueprint. Keep it updated when the design changes. Where an SDK detail is marked VERIFY, check the official docs before coding it.
 
 ## 1. System overview
@@ -53,6 +57,11 @@ Prices are testnet placeholders. They live in config, stored as integer tinybar 
 ## 4. Data models
 
 ### 4.1 Arkiv entities (public)
+
+
+
+
+
 
 Verified against `@arkiv-network/sdk` 1.0.1. The SDK uses named schemas of typed columns:
 - Each entity type is declared once with `defineSchema(name, columns)` from `@arkiv-network/sdk/schema`. The schema module lives in `server/src/schemas/` and is reused by the client.
@@ -308,6 +317,13 @@ At startup, `server/src/config.ts` validates every server variable with Zod and 
 - Set env variables in each host dashboard. Never commit them.
 - CORS: CLIENT_ORIGIN set to the deployed frontend URL.
 - Test the deployed link from a fresh browser before submitting.
+
+
+
+
+
+
+
 
 ## 12. Folder structure
 
