@@ -3,7 +3,9 @@ import express, { type Express } from "express";
 import { type Config, missingCredentials } from "./config.js";
 import { createErrorHandler, notFoundHandler } from "./errors.js";
 import type { ArkivService } from "./integrations/arkiv.js";
+import type { LlmService } from "./integrations/llm.js";
 import { agentsRouter } from "./routes/agents.js";
+import { devRouter } from "./routes/dev.js";
 import type { Store } from "./store/store.js";
 
 export interface AppDeps {
@@ -11,10 +13,12 @@ export interface AppDeps {
   store: Store;
   /** Null when ARKIV_ACCESS_KEY is not set. */
   arkiv: ArkivService | null;
+  /** Null (or absent) when LLM_API_KEY or LLM_MODEL is not set. */
+  llm?: LlmService | null;
 }
 
 /** Build the Express app without listening, so tests can start it on a random port. */
-export function createApp({ config, arkiv }: AppDeps): Express {
+export function createApp({ config, arkiv, llm = null }: AppDeps): Express {
   const app = express();
 
   app.disable("x-powered-by");
@@ -27,6 +31,9 @@ export function createApp({ config, arkiv }: AppDeps): Express {
   });
 
   app.use("/api/agents", agentsRouter(arkiv));
+
+  // Dev-only routes are not mounted in production, so they return the normal 404.
+  if (config.NODE_ENV !== "production") app.use("/api/dev", devRouter(llm));
 
   app.use(notFoundHandler);
   app.use(createErrorHandler());

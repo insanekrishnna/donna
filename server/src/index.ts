@@ -2,6 +2,7 @@ import { createApp } from "./app.js";
 import { ConfigError, loadConfig, loadLocalEnvFile, missingCredentials } from "./config.js";
 import { AppError } from "./errors.js";
 import { createArkivService, describeArkivError, type ArkivService } from "./integrations/arkiv.js";
+import { createLlmService, describeLlmError, type LlmService } from "./integrations/llm.js";
 import { MemoryStore } from "./store/memoryStore.js";
 
 // Tests set NODE_ENV=test and pass their own environment, so no local .env can leak into them.
@@ -34,7 +35,20 @@ async function start(): Promise<void> {
     }
   }
 
-  const app = createApp({ config, store: new MemoryStore(), arkiv });
+  // LLM calls need the key and model. When both are set, confirm the model exists before serving.
+  let llm: LlmService | null = null;
+  if (config.LLM_API_KEY && config.LLM_MODEL) {
+    try {
+      llm = createLlmService(config);
+      await llm.checkModel();
+    } catch (err) {
+      const detail = err instanceof AppError ? err.message : describeLlmError(err, [config.LLM_API_KEY]).message;
+      console.error(`LLM startup check failed: ${detail}`);
+      process.exit(1);
+    }
+  }
+
+  const app = createApp({ config, store: new MemoryStore(), arkiv, llm });
   // Express 5 calls this callback with an error when listening fails (for example, port in use).
   app.listen(config.PORT, (err?: Error) => {
     if (err) {
