@@ -12,7 +12,8 @@
     "test:live": "node --import tsx --test --test-concurrency=1 test/live/*.test.ts",
     "smoke:arkiv": "tsx scripts/arkiv-smoke.ts",
     "seed": "tsx scripts/seed.ts",
-    "buy:snapshot": "tsx scripts/buy-snapshot.ts"
+    "buy:snapshot": "tsx scripts/buy-snapshot.ts",
+    "scan:secrets": "tsx scripts/scan-secrets.ts"
   },
   "license": "MIT",
   "type": "module",
@@ -39,5 +40,10 @@
   "private": true,
   "engines": {
     "node": ">=22.10.0"
+  },
+  "overrides": {
+    "ethers": {
+      "ws": "^8.21.0"
+    }
   }
 }

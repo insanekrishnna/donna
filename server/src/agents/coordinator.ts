@@ -34,7 +34,11 @@ export interface CoordinatorDeps {
   llm: LlmService;
   arkiv: CoordinatorArkiv;
   buyer: HederaBuyer;
+  /** Most tasks running at once on this server. Extra starts get 503 TASKS_BUSY. */
+  maxRunningTasks?: number;
 }
+
+export const MAX_RUNNING_TASKS = 3;
 
 export interface StartTaskInput {
   task: string;
@@ -109,7 +113,14 @@ export interface Coordinator {
   run(task: TaskRun, snapshotUrl: string): Promise<TaskRun>;
 }
 
-export function createCoordinator({ store, llm, arkiv, buyer }: CoordinatorDeps): Coordinator {
+export function createCoordinator({
+  store,
+  llm,
+  arkiv,
+  buyer,
+  maxRunningTasks = MAX_RUNNING_TASKS,
+}: CoordinatorDeps): Coordinator {
+  let running = 0;
   const serverAddress = arkiv.serverAddress;
   if (!serverAddress) {
     throw new AppError(503, "ARKIV_NOT_CONFIGURED", "Arkiv server writes are not configured (ARKIV_SERVER_PRIVATE_KEY).");
@@ -334,6 +345,11 @@ export function createCoordinator({ store, llm, arkiv, buyer }: CoordinatorDeps)
 
   return {
     async start(input) {
+      // Checked and counted with no await in between, so two requests cannot both take the last slot.
+      if (running >= maxRunningTasks) {
+        throw new AppError(503, "TASKS_BUSY", "Donna is already running the maximum number of tasks. Please try again in a minute.");
+      }
+      running += 1;
       const now = Date.now();
       const task: TaskRun = {
         id: randomUUID(),
@@ -347,10 +363,17 @@ export function createCoordinator({ store, llm, arkiv, buyer }: CoordinatorDeps)
         createdAt: now,
         updatedAt: now,
       };
-      await store.createLedger(task.id, input.budgetCapTinybars);
-      await store.saveTask(task);
+      try {
+        await store.createLedger(task.id, input.budgetCapTinybars);
+        await store.saveTask(task);
+      } catch (err) {
+        running -= 1;
+        throw err;
+      }
       // Run in the background; the client polls GET /api/tasks/:id.
-      void run(structuredClone(task), input.snapshotUrl);
+      void run(structuredClone(task), input.snapshotUrl).finally(() => {
+        running -= 1;
+      });
       return task;
     },
     run,

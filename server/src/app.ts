@@ -10,6 +10,7 @@ import { devRouter } from "./routes/dev.js";
 import { paymentsRouter, servicesRouter } from "./routes/payments.js";
 import { tasksRouter } from "./routes/tasks.js";
 import type { Coordinator } from "./agents/coordinator.js";
+import { rateLimit } from "./rateLimit.js";
 import type { Store } from "./store/store.js";
 
 export interface AppDeps {
@@ -25,7 +26,14 @@ export interface AppDeps {
   buyer?: HederaBuyer | null;
   /** Null (or absent) unless the LLM, Hedera and Arkiv (with the server key) are all configured. */
   coordinator?: Coordinator | null;
+  /** Per-IP limit on starting tasks. Tests pass a small window. */
+  taskRateLimit?: { windowMs: number; max: number };
 }
+
+/** Largest JSON body accepted. The biggest legitimate body (a dev call with full context) fits. */
+export const MAX_BODY = "64kb";
+/** Default: each IP may start 5 tasks per 10 minutes. Every task spends testnet HBAR and LLM quota. */
+export const TASK_RATE_LIMIT = { windowMs: 10 * 60 * 1000, max: 5 };
 
 /** Build the Express app without listening, so tests can start it on a random port. */
 export function createApp({
@@ -36,12 +44,16 @@ export function createApp({
   paywall = null,
   buyer = null,
   coordinator = null,
+  taskRateLimit = TASK_RATE_LIMIT,
 }: AppDeps): Express {
   const app = express();
 
   app.disable("x-powered-by");
+  // In production the app runs behind one hosting proxy (Render). Trust exactly that hop, so
+  // req.ip is the client's address for rate limiting and cannot be spoofed with extra headers.
+  if (config.NODE_ENV === "production") app.set("trust proxy", 1);
   app.use(cors({ origin: config.CLIENT_ORIGIN }));
-  app.use(express.json({ limit: "100kb" }));
+  app.use(express.json({ limit: MAX_BODY }));
 
   // Reports which partner groups are not configured. Names only, never values.
   app.get("/api/health", (_req, res) => {
@@ -52,6 +64,13 @@ export function createApp({
 
   app.use(servicesRouter(paywall));
   app.use("/api/payments", paymentsRouter(store));
+  app.post(
+    "/api/tasks",
+    rateLimit({
+      ...taskRateLimit,
+      message: "Too many tasks started from your connection. Please wait a few minutes and try again.",
+    }),
+  );
   app.use("/api/tasks", tasksRouter(coordinator, store));
 
   // Dev-only routes are not mounted in production, so they return the normal 404.
