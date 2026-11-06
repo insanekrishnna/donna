@@ -12,7 +12,7 @@ export const BASE_TEST_ENV = {
   NODE_ENV: "test",
   PORT: "4999",
   CLIENT_ORIGIN: "http://localhost:5173",
-  OG_BASE_URL: "https://router-api-testnet.integratenetwork.work/v1",
+  LLM_BASE_URL: "https://openrouter.ai/api/v1",
   HEDERA_NETWORK: "hedera:testnet",
   HEDERA_FACILITATOR_URL: "https://x402.org/facilitator",
   MAX_PAYMENT_PER_CALL: "0.10",
@@ -24,8 +24,8 @@ export const BASE_TEST_ENV = {
  * the hex keys are a repeated pattern and the account IDs are made up.
  */
 export const FAKE_CREDENTIALS = {
-  OG_API_KEY: "sk-test-placeholder-not-a-real-key",
-  OG_MODEL: "test-model-placeholder",
+  LLM_API_KEY: "llm-test-placeholder-not-a-real-key",
+  LLM_MODEL: "test-model-placeholder",
   HEDERA_MERCHANT_ACCOUNT_ID: "0.0.1111111",
   HEDERA_AGENT_ACCOUNT_ID: "0.0.2222222",
   HEDERA_AGENT_PRIVATE_KEY: "0x" + "ab".repeat(32),

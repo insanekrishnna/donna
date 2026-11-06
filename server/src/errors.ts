@@ -48,7 +48,7 @@ interface HttpLikeError {
 
 /** Env variables whose values are secrets and must never appear in logs or responses. */
 export const SECRET_ENV_NAMES = [
-  "OG_API_KEY",
+  "LLM_API_KEY",
   "HEDERA_MERCHANT_PRIVATE_KEY",
   "HEDERA_AGENT_PRIVATE_KEY",
   "ARKIV_ACCESS_KEY",

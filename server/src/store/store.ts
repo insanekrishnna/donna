@@ -15,8 +15,11 @@ export interface ExecutionRecord {
   taskId: string;
   step: string;
   agentId: string;
-  /** Real 0G request ID (x_0g_trace.request_id). Absent until the 0G call returns. */
-  ogRequestId?: string;
+  /**
+   * The LLM provider's ID for this completion, copied from the real response. Optional: some
+   * providers (OpenRouter included) may not return one. Never invented or filled in.
+   */
+  llmRequestId?: string;
   status: ExecutionStatus;
   /** Plain-language error, set when status is "failed". */
   error?: string;
@@ -25,7 +28,7 @@ export interface ExecutionRecord {
 }
 
 export type NewExecutionRecord = Omit<ExecutionRecord, "id">;
-export type ExecutionUpdate = Partial<Pick<ExecutionRecord, "ogRequestId" | "status" | "error" | "finishedAt">>;
+export type ExecutionUpdate = Partial<Pick<ExecutionRecord, "llmRequestId" | "status" | "error" | "finishedAt">>;
 
 export type PaymentStatus = "settled" | "failed";
 

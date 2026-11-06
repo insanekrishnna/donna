@@ -8,7 +8,7 @@ describe("GET /api/health", () => {
     try {
       const res = await fetch(`${server.baseUrl}/api/health`);
       assert.equal(res.status, 200);
-      assert.deepEqual(await res.json(), { status: "ok", missing: ["0G", "Hedera", "Arkiv"] });
+      assert.deepEqual(await res.json(), { status: "ok", missing: ["LLM", "Hedera", "Arkiv"] });
     } finally {
       await server.close();
     }

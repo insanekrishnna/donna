@@ -170,14 +170,14 @@ describe("helpers", () => {
   });
 
   it("redacts every secret set in process.env from log lines", () => {
-    const saved = process.env.OG_API_KEY;
-    process.env.OG_API_KEY = "sk-test-redaction-placeholder";
+    const saved = process.env.LLM_API_KEY;
+    process.env.LLM_API_KEY = "llm-test-redaction-placeholder";
     try {
-      const line = redactProcessSecrets("failed: GET https://x.example/?key=sk-test-redaction-placeholder");
-      assert.ok(!line.includes("sk-test-redaction"));
+      const line = redactProcessSecrets("failed: GET https://x.example/?key=llm-test-redaction-placeholder");
+      assert.ok(!line.includes("llm-test-redaction"));
     } finally {
-      if (saved === undefined) delete process.env.OG_API_KEY;
-      else process.env.OG_API_KEY = saved;
+      if (saved === undefined) delete process.env.LLM_API_KEY;
+      else process.env.LLM_API_KEY = saved;
     }
   });
 

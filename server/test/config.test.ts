@@ -71,10 +71,10 @@ describe("startup config (child process)", () => {
 
 describe("loadConfig", () => {
   it("accepts the base env and treats blank values as missing", () => {
-    const config = loadConfig({ ...BASE_TEST_ENV, OG_API_KEY: "", ARKIV_ACCESS_KEY: "   " });
+    const config = loadConfig({ ...BASE_TEST_ENV, LLM_API_KEY: "", ARKIV_ACCESS_KEY: "   " });
     assert.equal(config.PORT, 4999);
     assert.equal(config.ARKIV_CHAIN_ID, 7794095);
-    assert.equal(config.OG_API_KEY, undefined);
+    assert.equal(config.LLM_API_KEY, undefined);
     assert.equal(config.ARKIV_ACCESS_KEY, undefined);
   });
 
@@ -96,7 +96,7 @@ describe("loadConfig", () => {
 
 describe("missingCredentials", () => {
   it("lists all partner groups when no credentials are set", () => {
-    assert.deepEqual(missingCredentials(loadConfig(BASE_TEST_ENV)), ["0G", "Hedera", "Arkiv"]);
+    assert.deepEqual(missingCredentials(loadConfig(BASE_TEST_ENV)), ["LLM", "Hedera", "Arkiv"]);
   });
 
   it("lists none when all credentials are set", () => {
@@ -109,8 +109,8 @@ describe("missingCredentials", () => {
   });
 
   it("reports a group as missing when only part of it is set", () => {
-    const config = loadConfig({ ...BASE_TEST_ENV, OG_API_KEY: FAKE_CREDENTIALS.OG_API_KEY });
-    assert.ok(missingCredentials(config).includes("0G"));
+    const config = loadConfig({ ...BASE_TEST_ENV, LLM_API_KEY: FAKE_CREDENTIALS.LLM_API_KEY });
+    assert.ok(missingCredentials(config).includes("LLM"));
   });
 });
 

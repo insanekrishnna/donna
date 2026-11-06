@@ -88,10 +88,11 @@ const envSchema = z.object({
     "CLIENT_ORIGIN must be an origin with no path or trailing slash, like http://localhost:5173",
   ),
 
-  // AI inference: OpenAI-compatible endpoint. Still named OG_*; the approved OpenRouter switch renames these to LLM_*.
-  OG_BASE_URL: httpUrl("OG_BASE_URL"),
-  OG_API_KEY: optional(z.string().regex(/^sk-\S{13,}$/, "OG_API_KEY must start with sk- and be at least 16 characters")),
-  OG_MODEL: optional(z.string().regex(/^\S+$/, "OG_MODEL must not contain spaces")),
+  // LLM: any OpenAI-compatible endpoint (OpenRouter for now). LLM_API_KEY is a server-only secret.
+  LLM_BASE_URL: httpUrl("LLM_BASE_URL"),
+  // At least 16 characters, so log redaction (which ignores very short strings) always applies.
+  LLM_API_KEY: optional(z.string().regex(/^\S{16,}$/, "LLM_API_KEY must be at least 16 characters with no spaces")),
+  LLM_MODEL: optional(z.string().regex(/^\S+$/, "LLM_MODEL must not contain spaces")),
 
   // Hedera testnet
   HEDERA_NETWORK: z.literal("hedera:testnet", "HEDERA_NETWORK must be hedera:testnet (testnet only)"),
@@ -119,7 +120,7 @@ const envSchema = z.object({
 
 export type Config = z.infer<typeof envSchema>;
 
-export type PartnerGroup = "0G" | "Hedera" | "Arkiv";
+export type PartnerGroup = "LLM" | "Hedera" | "Arkiv";
 
 /** Thrown by loadConfig. `problems` holds "VARIABLE: rule" lines, never values. */
 export class ConfigError extends Error {
@@ -155,7 +156,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
 /** Partner groups whose credentials are not fully configured yet. */
 export function missingCredentials(config: Config): PartnerGroup[] {
   const missing: PartnerGroup[] = [];
-  if (!config.OG_API_KEY || !config.OG_MODEL) missing.push("0G");
+  if (!config.LLM_API_KEY || !config.LLM_MODEL) missing.push("LLM");
   if (!config.HEDERA_MERCHANT_ACCOUNT_ID || !config.HEDERA_AGENT_ACCOUNT_ID || !config.HEDERA_AGENT_PRIVATE_KEY) {
     missing.push("Hedera");
   }

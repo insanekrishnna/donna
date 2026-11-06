@@ -69,11 +69,11 @@ describe("MemoryStore records", () => {
     const store = new MemoryStore();
     const rec = await store.addExecution({ taskId: "t1", step: "s1", agentId: "research", status: "running", startedAt: 1 });
     await store.addExecution({ taskId: "t2", step: "s1", agentId: "writer", status: "pending", startedAt: 2 });
-    const updated = await store.updateExecution(rec.id, { status: "done", ogRequestId: "req-1", finishedAt: 3 });
+    const updated = await store.updateExecution(rec.id, { status: "done", llmRequestId: "req-1", finishedAt: 3 });
     assert.equal(updated.status, "done");
     const list = await store.listExecutions("t1");
     assert.equal(list.length, 1);
-    assert.equal(list[0]?.ogRequestId, "req-1");
+    assert.equal(list[0]?.llmRequestId, "req-1");
     await assert.rejects(store.updateExecution("missing", { status: "failed" }));
   });
 
