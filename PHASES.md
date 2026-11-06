@@ -273,7 +273,7 @@ Time estimates assume one developer with Claude Code. Adjust once you know your 
 ## Master tracker
 
 - [x] B0: Setup finish (docs rename, .gitignore, first commit)
-- [ ] B1: Backend foundation
+- [x] B1: Backend foundation
 - [ ] B2: Arkiv backend
 - [ ] B3: 0G backend with real request ID
 - [ ] B4: Hedera x402 paid call with real transaction
