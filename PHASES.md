@@ -272,7 +272,7 @@ Time estimates assume one developer with Claude Code. Adjust once you know your 
 
 ## Master tracker
 
-- [ ] B0: Setup finish (docs rename, .gitignore, first commit)
+- [x] B0: Setup finish (docs rename, .gitignore, first commit)
 - [ ] B1: Backend foundation
 - [ ] B2: Arkiv backend
 - [ ] B3: 0G backend with real request ID

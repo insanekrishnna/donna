@@ -46,7 +46,7 @@ Important: specialist agents are configurations running on a shared 0G execution
 | analyst | Data Analyst Agent | Compares items and produces structured findings | 0.03 HBAR (3,000,000 tinybars) |
 | writer | Report Writer Agent | Combines findings into one readable report | 0.02 HBAR (2,000,000 tinybars) |
 
-The paid service for the demo: the Research Agent buys a market snapshot from the Donna merchant endpoint (`GET /api/services/market-snapshot`) via Hedera x402, and then the Analyst uses that data. The payment is the real agent-to-agent transaction. The snapshot price is 0.01 HBAR (1,000,000 tinybars).
+The paid service for the demo: the Research Agent buys a market snapshot from the Donna merchant endpoint (`GET /api/services/market-snapshot`) via Hedera x402, and then the Analyst uses that data. The payment is the real agent-to-agent transaction. The snapshot price is 0.01 HBAR (1,000,000 tinybars): a testnet placeholder, set in config. It is a sensible default, not a sourced figure.
 
 Prices are testnet placeholders. They live in config, stored as integer tinybar strings (1 HBAR = 100,000,000 tinybars), not in code. The UI shows them as decimal HBAR.
 
