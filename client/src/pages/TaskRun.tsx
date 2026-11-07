@@ -38,7 +38,7 @@ export function buildTimeline(t: TaskView): TimelineItem[] {
   items.push({
     key: "plan",
     title: "Plan the work",
-    detail: planned ? `${t.steps.length} steps planned.` : undefined,
+    detail: planned ? `${t.steps.length} ${t.steps.length === 1 ? "step" : "steps"} planned.` : undefined,
     status: planned ? "done" : failed ? "failed" : a.taskEntityKey ? "running" : "pending",
     extra: t.proof.planRequestId ? <ProofBadge label="Plan request ID" value={t.proof.planRequestId} /> : undefined,
   });
