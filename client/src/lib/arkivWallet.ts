@@ -49,6 +49,9 @@ export interface PublishResult {
  * The fields come from POST /api/agents/prepare, which already validated them.
  */
 export async function publishListing(wallet: EIP1193Provider, address: Hex, listing: PreparedListing): Promise<PublishResult> {
+  // A new account has no gas. Say so up front, instead of a vague failure from the wallet.
+  const balance = await rpcRead("eth_getBalance", [address, "latest"]).catch(() => undefined);
+  if (balance === "0x0") throw new NoGasError();
   const client = createWalletClient({ chain: arkivChain, transport: splitProvider(wallet), account: address });
   const result = await client.createEntity(
     AgentListing,
@@ -58,15 +61,27 @@ export async function publishListing(wallet: EIP1193Provider, address: Hex, list
   return { entityKey: result.entityKey, txHash: result.txHash };
 }
 
-/** Plain-language message for a failed publish. Never shows raw errors. */
+export class NoGasError extends Error {
+  constructor() {
+    super("no tGLM");
+    this.name = "NoGasError";
+  }
+}
+
+/** Plain-language message for a failed publish. Never shows raw errors to the user. */
 export function describePublishError(err: unknown): string {
+  if (err instanceof NoGasError) {
+    return "Your wallet has 0 tGLM, so it cannot pay the Arkiv gas fee. Get free test tokens at hub.arkiv.network/faucet, then publish again.";
+  }
+  // The full error goes to the browser console only, to help debugging. It holds no secrets.
+  console.error("Arkiv publish failed:", err);
   const e = err as { code?: number; name?: string; message?: string; shortMessage?: string; cause?: { code?: number } };
   const code = e?.code ?? e?.cause?.code;
   const text = `${e?.name ?? ""} ${e?.shortMessage ?? ""} ${e?.message ?? ""}`.toLowerCase();
   if (code === 4001 || text.includes("user rejected") || text.includes("denied")) {
     return "You cancelled the request in your wallet. Nothing was published.";
   }
-  if (text.includes("insufficient funds")) {
+  if (text.includes("insufficient funds") || text.includes("exceeds balance") || text.includes("exceeds allowance")) {
     return "Your wallet has no tGLM for gas on Arkiv. Get free test tokens at hub.arkiv.network/faucet, then try again.";
   }
   if (text.includes("chain") && text.includes("mismatch")) {
