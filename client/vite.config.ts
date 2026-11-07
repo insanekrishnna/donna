@@ -6,9 +6,8 @@ export default defineConfig({
   // One .env for the whole project, at the repo root. Vite exposes only VITE_* values to the browser.
   envDir: "..",
   resolve: {
-    // The Arkiv schema module is shared with the server (../server/src/schemas/arkiv.ts).
-    // Resolve its imports to this app's copies, so there is one viem, zod and Arkiv SDK.
+    // One copy each of viem, zod and the Arkiv SDK (wagmi and the SDK both depend on viem).
     dedupe: ["viem", "zod", "@arkiv-network/sdk"],
   },
-  server: { port: 5173, strictPort: true, fs: { allow: [".."] } },
+  server: { port: 5173, strictPort: true },
 });

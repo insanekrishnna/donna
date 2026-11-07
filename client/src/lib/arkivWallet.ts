@@ -1,6 +1,6 @@
 import { createWalletClient, ExpirationTime } from "@arkiv-network/sdk";
 import { custom, type EIP1193Provider, type Hex } from "viem";
-import { AgentListing, encodeDataJson } from "../../../server/src/schemas/arkiv";
+import { AgentListing, encodeDataJson } from "./arkivSchema";
 import type { PreparedListing } from "./api";
 import { ARKIV_RPC_URL, arkivChain } from "./wagmi";
 
